@@ -130,7 +130,7 @@ Open your browser at `http://localhost:8501`.
 
 ## 🌐 Cloud Deployment Guide
 
-### Option 1: Streamlit Community Cloud (Recommended - Free & 2 Minutes)
+### 1: Streamlit Community Cloud (Recommended - Free & 2 Minutes)
 
 1. Push your code to your GitHub repository: [https://github.com/MS12code/SpecPilot](https://github.com/MS12code/SpecPilot).
 2. Go to [share.streamlit.io](https://share.streamlit.io/) and log in with GitHub.
@@ -146,29 +146,9 @@ Open your browser at `http://localhost:8501`.
 
 ---
 
-### Option 2: Hugging Face Spaces (Free)
 
-1. Create a new Space on [Hugging Face](https://huggingface.co/new-space).
-2. Select **Streamlit** as the Space SDK.
-3. Upload/push the repository files to the Space.
-4. Go to **Settings** -> **Variables and secrets** -> Add secret:
-   - `GROQ_API_KEY`: `gsk_your_groq_api_key`
-5. Hugging Face will automatically build and host your app.
 
----
 
-### Option 3: Render / Railway / Docker
-
-Create a `Dockerfile` if deploying to container hosts:
-```dockerfile
-FROM python:3.10-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 8501
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-```
 
 ---
 
@@ -186,16 +166,7 @@ CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0
 
 ---
 
-## 💼 Resume Description & Interview Talking Points
 
-### Summary for Resume:
-> **SpecPilot**: Autonomous multi-agent AI system built with **LangGraph**, **LangChain**, **Groq (Llama 3.3)**, and **Streamlit** that automates software requirement decomposition into structured technical specifications, risk assessments, dependency graphs, and testable acceptance criteria.
-
-### Key Resume Accomplishments:
-- **Architected SpecPilot**, an 8-agent LangGraph workflow pipeline (`Planner` -> `Requirement` -> `Ambiguity` -> `Task Breakdown` -> `Dependency` -> `Risk` -> `Acceptance` -> `Spec Generator`) that converts raw product requirements into structured engineering tech specs.
-- **Implemented Pydantic schema validation** across all agent nodes to enforce deterministic, typed JSON state transitions and prevent LLM hallucinations.
-- **Designed automated ambiguity detection** to uncover missing technical edge cases and generate clarifying developer questions before sprint planning.
-- **Built a responsive Streamlit UI** featuring step-by-step progress streaming, domain task categorization (Frontend, Backend, DB, Testing, Docs), and 1-click PDF specification export.
 
 ---
 
