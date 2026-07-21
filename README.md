@@ -6,6 +6,9 @@
   <img src="https://img.shields.io/badge/LLM-Groq%20Llama%203.3-purple?style=for-the-badge&logo=groq&logoColor=white" alt="Groq Llama 3.3" />
   <img src="https://img.shields.io/badge/UI-Streamlit-red?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit UI" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" />
+  <a href="https://specpilot-ng5vhbspfpzv9e8xivsbmv.streamlit.app/">
+    <img src="https://img.shields.io/badge/Live%20Demo-%F0%9F%9A%80%20Try%20Now-brightgreen?style=for-the-badge" alt="Live Demo" />
+  </a>
 </p>
 
 <p align="center">
@@ -14,6 +17,8 @@
 
 <p align="center">
   🔗 <b>Repository:</b> <a href="https://github.com/MS12code/SpecPilot">github.com/MS12code/SpecPilot</a>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  🚀 <b>Live Demo:</b> <a href="https://specpilot-ng5vhbspfpzv9e8xivsbmv.streamlit.app/">specpilot.streamlit.app</a>
 </p>
 
 ---
