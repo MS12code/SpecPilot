@@ -132,18 +132,21 @@ if "is_analyzing" not in st.session_state:
     st.session_state.is_analyzing = False
 
 
+# ---------------------------------------------------------------------------
+# Silently resolve API key from Streamlit Secrets or .env — never shown in UI
+# ---------------------------------------------------------------------------
+api_key_input = os.getenv("GROQ_API_KEY", "")
+
 # Sidebar Configuration
 with st.sidebar:
     st.title("⚙️ Settings & Configuration")
-    
-    env_api_key = os.getenv("GROQ_API_KEY", "")
-    api_key_input = st.text_input(
-        "Groq API Key",
-        value=env_api_key,
-        type="password",
-        help="Required for LLM inference via Groq (llama-3.3-70b-versatile)."
-    )
-    
+
+    # API key status indicator (no input shown to user)
+    if api_key_input:
+        st.success("LLM Engine: Ready", icon="✅")
+    else:
+        st.error("GROQ_API_KEY not configured. Add it to Streamlit Secrets.", icon="🔑")
+
     st.markdown("---")
     st.markdown("### 🤖 Agent Architecture Flow")
     st.markdown("""
@@ -156,11 +159,11 @@ with st.sidebar:
     7. ✅ **Acceptance Agent**
     8. 📄 **Technical Spec Generator**
     """)
-    
+
     st.markdown("---")
     st.markdown("### ℹ️ About SpecPilot")
     st.caption("Built with LangGraph, LangChain, Groq, Pydantic & Streamlit. Designed for modern engineering team requirement refinement.")
-    
+
     if st.button("🗑️ Clear Session State"):
         st.session_state.analysis_results = None
         st.session_state.requirement_input = ""
@@ -209,7 +212,7 @@ if run_btn:
     if not user_requirement.strip():
         st.error("Please enter a software requirement before analyzing.")
     elif not api_key_input:
-        st.error("Groq API Key is missing! Please provide it in the sidebar or in your `.env` file.")
+        st.error("⚙️ The app is not configured yet. Please contact the administrator to set up the GROQ_API_KEY in Streamlit Secrets.")
     else:
         st.session_state.is_analyzing = True
         st.session_state.requirement_input = user_requirement
