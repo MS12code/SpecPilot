@@ -120,7 +120,7 @@ st.markdown("""
         font-weight: 700;
     }
 </style>
-""", unsafe_allow_dict_only=False, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 
 # Initialize Session State Variables
