@@ -77,53 +77,101 @@ class SpecPDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 
+def _safe_text(text: str, max_len: int = 900) -> str:
+    """
+    Sanitise text for FPDF:
+      1. Encode to latin-1, replacing any unmappable characters.
+      2. Truncate lines longer than max_len chars so no word is wider than the page.
+      3. Insert a zero-width space every 80 chars so FPDF can always find a break point.
+    """
+    # Latin-1 encode/decode to strip unsupported unicode
+    text = text.encode("latin-1", "replace").decode("latin-1")
+    # Insert soft break every 80 chars to avoid "no break point" error
+    words = text.split(" ")
+    broken = []
+    for word in words:
+        if len(word) > 80:
+            # Chunk long words so FPDF can wrap them
+            chunks = [word[i:i+80] for i in range(0, len(word), 80)]
+            broken.append(" ".join(chunks))
+        else:
+            broken.append(word)
+    text = " ".join(broken)
+    return text[:max_len]
+
+
 def generate_pdf_report(markdown_text: str, requirement_title: str = "Requirement Spec") -> bytes:
     """
     Converts markdown technical specification text to downloadable PDF bytes.
+    Uses explicit cell width (W=190) to avoid FPDFException in fpdf2 >= 2.7.
     """
+    # A4 page: 210mm wide, margins 10mm each side → usable width = 190mm
+    PAGE_W = 190
+
     pdf = SpecPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # Title Section
+
+    # Document title
     pdf.set_font("Helvetica", "B", 16)
     pdf.set_text_color(15, 23, 42)
-    pdf.multi_cell(0, 8, f"Technical Analysis: {requirement_title}")
+    safe_title = _safe_text(f"Technical Analysis: {requirement_title}")
+    pdf.multi_cell(PAGE_W, 8, safe_title)
     pdf.ln(4)
 
-    # Clean text to avoid unicode encoding issues in basic FPDF fonts
-    sanitized_text = markdown_text.encode("latin-1", "replace").decode("latin-1")
-    lines = sanitized_text.split("\n")
+    lines = markdown_text.split("\n")
 
     for line in lines:
         stripped = line.strip()
+
+        # Skip empty lines
         if not stripped:
             pdf.ln(3)
             continue
-            
+
+        # Skip Markdown code fences and table separators (unrenderable in plain PDF)
+        if stripped.startswith("```") or stripped.startswith("---") or stripped.startswith("| :"):
+            continue
+
         if stripped.startswith("# "):
             pdf.set_font("Helvetica", "B", 14)
-            pdf.set_text_color(30, 58, 138)  # Deep blue
-            pdf.multi_cell(0, 7, stripped.replace("# ", ""))
+            pdf.set_text_color(30, 58, 138)
+            pdf.multi_cell(PAGE_W, 7, _safe_text(stripped.replace("# ", "", 1)))
             pdf.ln(2)
+
         elif stripped.startswith("## "):
             pdf.set_font("Helvetica", "B", 12)
             pdf.set_text_color(30, 41, 59)
-            pdf.multi_cell(0, 6, stripped.replace("## ", ""))
+            pdf.multi_cell(PAGE_W, 6, _safe_text(stripped.replace("## ", "", 1)))
             pdf.ln(2)
+
         elif stripped.startswith("### "):
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_text_color(71, 85, 105)
-            pdf.multi_cell(0, 5, stripped.replace("### ", ""))
+            pdf.multi_cell(PAGE_W, 5, _safe_text(stripped.replace("### ", "", 1)))
             pdf.ln(1)
+
+        elif stripped.startswith("#### "):
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.set_text_color(100, 116, 139)
+            pdf.multi_cell(PAGE_W, 5, _safe_text(stripped.replace("#### ", "", 1)))
+
         elif stripped.startswith("- ") or stripped.startswith("* "):
             pdf.set_font("Helvetica", "", 10)
             pdf.set_text_color(51, 65, 85)
-            bullet_text = "  • " + stripped[2:]
-            pdf.multi_cell(0, 5, bullet_text)
+            pdf.multi_cell(PAGE_W, 5, _safe_text("  - " + stripped[2:]))
+
+        elif stripped.startswith("|"):
+            # Render Markdown table rows as plain text
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(51, 65, 85)
+            row_text = stripped.replace("|", "  ").strip()
+            pdf.multi_cell(PAGE_W, 5, _safe_text(row_text))
+
         else:
             pdf.set_font("Helvetica", "", 10)
             pdf.set_text_color(51, 65, 85)
-            pdf.multi_cell(0, 5, stripped)
+            pdf.multi_cell(PAGE_W, 5, _safe_text(stripped))
 
     return bytes(pdf.output())
+
