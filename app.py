@@ -88,6 +88,13 @@ st.markdown("""
         border: none;
         padding: 0.6rem 1.5rem;
         transition: all 0.2s ease-in-out;
+        min-height: 70px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: normal;
+        line-height: 1.4;
     }
     
     .stButton>button:hover {
