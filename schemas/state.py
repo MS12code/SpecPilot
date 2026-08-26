@@ -4,7 +4,15 @@ Defines structured outputs for each agent and the LangGraph workflow state.
 """
 
 from typing import List, Dict, Any, Optional, TypedDict
-from pydantic import BaseModel, Field, AliasChoices
+from pydantic import BaseModel, Field, AliasChoices, field_validator
+
+
+def _ensure_string_list(v: Any) -> List[str]:
+    if isinstance(v, str):
+        return [s.strip() for s in v.split(",") if s.strip()]
+    if isinstance(v, list):
+        return [str(item) for item in v]
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -15,6 +23,11 @@ class PlannerAnalysis(BaseModel):
     scope_complexity: str = Field(default="Medium", description="Estimated complexity: Low, Medium, High, or Enterprise", validation_alias=AliasChoices("scope_complexity", "complexity"))
     key_focus_areas: List[str] = Field(default_factory=list, description="Key technical areas to focus on during analysis", validation_alias=AliasChoices("key_focus_areas", "key_technical_focus_areas", "focus_areas"))
     planned_steps: List[str] = Field(default_factory=list, description="Sequential workflow steps planned for downstream agents", validation_alias=AliasChoices("planned_steps", "analysis_plan_steps", "steps"))
+
+    @field_validator("key_focus_areas", "planned_steps", mode="before")
+    @classmethod
+    def _parse_list(cls, v):
+        return _ensure_string_list(v)
 
 
 # ---------------------------------------------------------------------------
@@ -27,6 +40,11 @@ class RequirementSummary(BaseModel):
     actors: List[str] = Field(default_factory=list, description="User roles, systems, or entities interacting with the feature", validation_alias=AliasChoices("actors", "user_roles", "roles"))
     main_features: List[str] = Field(default_factory=list, description="Primary features extracted from the text", validation_alias=AliasChoices("main_features", "features", "key_features"))
 
+    @field_validator("functional_requirements", "non_functional_requirements", "actors", "main_features", mode="before")
+    @classmethod
+    def _parse_list(cls, v):
+        return _ensure_string_list(v)
+
 
 # ---------------------------------------------------------------------------
 # 3. Ambiguity Detection Agent Schema
@@ -36,6 +54,11 @@ class AmbiguityReport(BaseModel):
     ambiguous_statements: List[str] = Field(default_factory=list, description="Vague or loosely defined phrases", validation_alias=AliasChoices("ambiguous_statements", "ambiguities", "vague_phrases"))
     developer_questions: List[str] = Field(default_factory=list, description="Clarifying questions developers must ask stakeholders", validation_alias=AliasChoices("developer_questions", "questions", "clarifying_questions"))
     assumptions_made: List[str] = Field(default_factory=list, description="Reasonable default assumptions made to enable design", validation_alias=AliasChoices("assumptions_made", "assumptions", "working_assumptions"))
+
+    @field_validator("missing_details", "ambiguous_statements", "developer_questions", "assumptions_made", mode="before")
+    @classmethod
+    def _parse_list(cls, v):
+        return _ensure_string_list(v)
 
 
 # ---------------------------------------------------------------------------
@@ -63,11 +86,21 @@ class DependencyItem(BaseModel):
     depends_on: List[str] = Field(default_factory=list, description="Prerequisite services, tools, or components", validation_alias=AliasChoices("depends_on", "prerequisites", "dependencies"))
     explanation: str = Field(default="", description="Why this dependency relationship exists", validation_alias=AliasChoices("explanation", "reason", "description"))
 
+    @field_validator("depends_on", mode="before")
+    @classmethod
+    def _parse_list(cls, v):
+        return _ensure_string_list(v)
+
 
 class DependencyGraph(BaseModel):
     dependencies: List[DependencyItem] = Field(default_factory=list, description="List of component dependencies", validation_alias=AliasChoices("dependencies", "component_dependencies"))
     execution_order: List[str] = Field(default_factory=list, description="Recommended build sequence for implementation", validation_alias=AliasChoices("execution_order", "build_order", "sequence"))
     critical_path: List[str] = Field(default_factory=list, description="High-risk bottleneck components on the critical path", validation_alias=AliasChoices("critical_path", "bottlenecks"))
+
+    @field_validator("execution_order", "critical_path", mode="before")
+    @classmethod
+    def _parse_list(cls, v):
+        return _ensure_string_list(v)
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +118,11 @@ class RiskAssessment(BaseModel):
     edge_cases: List[str] = Field(default_factory=list, description="Corner/edge cases to handle during development", validation_alias=AliasChoices("edge_cases", "corner_cases"))
     overall_risk_level: str = Field(default="Moderate", description="Overall risk score: Low, Moderate, High, or Severe", validation_alias=AliasChoices("overall_risk_level", "risk_level", "overall_risk"))
 
+    @field_validator("edge_cases", mode="before")
+    @classmethod
+    def _parse_list(cls, v):
+        return _ensure_string_list(v)
+
 
 # ---------------------------------------------------------------------------
 # 7. Acceptance Criteria Agent Schema
@@ -99,6 +137,11 @@ class AcceptanceCriteriaItem(BaseModel):
 class AcceptanceCriteriaList(BaseModel):
     criteria: List[AcceptanceCriteriaItem] = Field(default_factory=list, description="Structured Given-When-Then criteria", validation_alias=AliasChoices("criteria", "acceptance_criteria"))
     general_rules: List[str] = Field(default_factory=list, description="General validation rules and pass/fail conditions", validation_alias=AliasChoices("general_rules", "qa_rules", "rules"))
+
+    @field_validator("general_rules", mode="before")
+    @classmethod
+    def _parse_list(cls, v):
+        return _ensure_string_list(v)
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +158,11 @@ class DatabaseTableSuggestion(BaseModel):
     fields: List[str] = Field(default_factory=list, description="Key fields and data types", validation_alias=AliasChoices("fields", "columns"))
     purpose: str = Field(default="", description="Data stored and relationship", validation_alias=AliasChoices("purpose", "description"))
 
+    @field_validator("fields", mode="before")
+    @classmethod
+    def _parse_list(cls, v):
+        return _ensure_string_list(v)
+
 
 class TechnicalSpec(BaseModel):
     executive_summary: str = Field(default="", description="High-level engineering overview of the project spec", validation_alias=AliasChoices("executive_summary", "summary"))
@@ -124,6 +172,11 @@ class TechnicalSpec(BaseModel):
     overall_complexity: str = Field(default="Medium", description="Estimated complexity rating: Low, Medium, High, Very High", validation_alias=AliasChoices("overall_complexity", "complexity"))
     development_recommendations: List[str] = Field(default_factory=list, description="Key recommendations for developers before coding", validation_alias=AliasChoices("development_recommendations", "recommendations"))
     full_report_markdown: str = Field(default="", description="Complete, beautifully formatted Markdown report", validation_alias=AliasChoices("full_report_markdown", "markdown_report", "report"))
+
+    @field_validator("development_recommendations", mode="before")
+    @classmethod
+    def _parse_list(cls, v):
+        return _ensure_string_list(v)
 
 
 # ---------------------------------------------------------------------------
