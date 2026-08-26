@@ -34,61 +34,69 @@ GROQ_FALLBACK_MODELS: List[str] = [
     "llama3-groq-8b-8192-tool-use-preview",
 ]
 
+# Module-level active model index — advanced when a model's daily TPD quota is exhausted.
+# get_groq_llm() reads this so all agents automatically use the current fallback model.
+_ACTIVE_MODEL_INDEX: int = 0
+
+
+class FallbackModelAdvanced(Exception):
+    """
+    Sentinel raised by safe_chain_invoke when the daily quota for the current model
+    is exhausted and the global model index has been advanced to the next fallback.
+    The caller (workflow node) should re-invoke the agent function; it will then call
+    get_groq_llm() fresh and automatically pick up the new model.
+    """
+    def __init__(self, new_model: str):
+        self.new_model = new_model
+        super().__init__(f"Switched to fallback model: {new_model}")
+
+
+def advance_fallback_model() -> str:
+    """
+    Advance the global active model index to the next fallback model.
+    Returns the name of the newly selected model.
+    Raises RuntimeError if all models are exhausted.
+    """
+    global _ACTIVE_MODEL_INDEX
+    _ACTIVE_MODEL_INDEX += 1
+    if _ACTIVE_MODEL_INDEX >= len(GROQ_FALLBACK_MODELS):
+        _ACTIVE_MODEL_INDEX = len(GROQ_FALLBACK_MODELS) - 1  # clamp
+        raise RuntimeError(
+            "All Groq model daily quotas are exhausted. "
+            "Please wait for the quota to reset (~24h) or upgrade at "
+            "https://console.groq.com/settings/billing"
+        )
+    return GROQ_FALLBACK_MODELS[_ACTIVE_MODEL_INDEX]
+
+
 def safe_chain_invoke(
     chain,
     input_data: dict,
     max_retries: int = 4,
     base_delay: float = 3.0,
-    api_key: Optional[str] = None,
-    temperature: float = 0.2,
-    max_tokens: int = 4096,
 ) -> Any:
     """
     Safely invokes a LangChain runnable chain with automatic retries on Groq rate limits:
-      - TPM (tokens per minute) → 413 / 429 with 'tokens per minute': exponential backoff retry.
-      - TPD (tokens per day)    → 429 with 'tokens per day': switches to the next fallback model.
-      - Transient JSON / generation errors (400 json_validate_failed): retry with backoff.
+      - TPM (tokens per minute) / 413: exponential backoff retry.
+      - TPD (tokens per day) / 429:   advances the global model index and raises
+        FallbackModelAdvanced so the workflow node re-invokes the agent with the new model.
+      - Transient JSON / generation errors: retry with backoff.
     """
-    from langchain_core.output_parsers import JsonOutputParser  # noqa: F401
-
-    _fallback_index = 0  # which model in GROQ_FALLBACK_MODELS we're currently using
-
     for attempt in range(max_retries):
         try:
             return chain.invoke(input_data)
+        except FallbackModelAdvanced:
+            # Propagate immediately — don't swallow the sentinel
+            raise
         except Exception as e:
             err_str = str(e).lower()
 
-            # Daily quota exhausted → switch to next fallback model immediately
-            is_daily_limit = "tokens per day" in err_str or ("429" in err_str and "per day" in err_str)
+            # Daily quota (TPD) exhausted → advance global model, signal caller to re-invoke
+            is_daily_limit = "tokens per day" in err_str or ("per day" in err_str and "429" in err_str)
             if is_daily_limit:
-                _fallback_index += 1
-                if _fallback_index < len(GROQ_FALLBACK_MODELS):
-                    next_model = GROQ_FALLBACK_MODELS[_fallback_index]
-                    print(f"[SpecPilot] Daily token quota exhausted. Switching to fallback model: {next_model}")
-                    # Rebuild the chain's LLM binding with the new model
-                    try:
-                        new_llm = get_groq_llm(
-                            api_key=api_key,
-                            model_name=next_model,
-                            temperature=temperature,
-                            max_tokens=max_tokens,
-                        )
-                        # Replace the LLM in the chain's first step if it's a pipeline
-                        if hasattr(chain, 'first'):
-                            chain = new_llm | chain.last
-                        else:
-                            chain = new_llm | chain
-                    except Exception:
-                        pass  # keep original chain, retry will re-raise
-                    time.sleep(2.0)
-                    continue  # retry with new model
-                else:
-                    raise RuntimeError(
-                        "All Groq model daily quotas exhausted. "
-                        "Please wait until quota resets or upgrade your Groq plan at "
-                        "https://console.groq.com/settings/billing"
-                    ) from e
+                new_model = advance_fallback_model()  # may raise RuntimeError if all exhausted
+                print(f"[SpecPilot] Daily quota exhausted. Switching to fallback model: {new_model}")
+                raise FallbackModelAdvanced(new_model) from e
 
             # Minute-level rate limit or transient error → exponential backoff
             is_retryable = any(keyword in err_str for keyword in [
@@ -124,14 +132,15 @@ def get_groq_llm(
             "GROQ_API_KEY not found! Please set it in your .env file or enter it in the Streamlit sidebar."
         )
 
-    # Use specified model, environment variable, or fall back to first active model in fallback list
+    # Use specified model, environment variable, or the currently active fallback model.
+    # _ACTIVE_MODEL_INDEX is advanced by advance_fallback_model() when daily TPD is exhausted.
     selected_model = model_name or os.getenv("GROQ_MODEL_NAME")
     if (
         not selected_model
         or selected_model in DEPRECATED_MODELS
         or any(dep in str(selected_model).lower() for dep in ["llama-3.3", "llama-3.1", "llama3-", "mixtral"])
     ):
-        selected_model = GROQ_FALLBACK_MODELS[0]  # "qwen/qwen3.6-27b"
+        selected_model = GROQ_FALLBACK_MODELS[_ACTIVE_MODEL_INDEX]
 
     return ChatGroq(
         groq_api_key=key,

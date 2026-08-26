@@ -15,6 +15,23 @@ from agents.dependency_agent import run_dependency_agent
 from agents.risk_agent import run_risk_agent
 from agents.acceptance_agent import run_acceptance_agent
 from agents.spec_generator import run_spec_generator_agent
+from utils.helper import FallbackModelAdvanced, GROQ_FALLBACK_MODELS
+
+
+def _with_fallback(agent_fn, state, api_key):
+    """
+    Invoke an agent function, automatically retrying with the next Groq fallback model
+    if the current model's daily token quota (TPD) is exhausted.
+    """
+    for _ in range(len(GROQ_FALLBACK_MODELS)):
+        try:
+            return agent_fn(state, api_key=api_key)
+        except FallbackModelAdvanced as fb:
+            # _ACTIVE_MODEL_INDEX already advanced in helper.py; just re-invoke.
+            print(f"[SpecPilot] Retrying agent with model: {fb.new_model}")
+            time.sleep(1.5)
+    # If we exit the loop without returning, something unexpected happened.
+    raise RuntimeError("Failed to complete agent after exhausting all fallback models.")
 
 
 def build_specpilot_workflow(api_key: Optional[str] = None):
@@ -24,30 +41,30 @@ def build_specpilot_workflow(api_key: Optional[str] = None):
     # Initialize StateGraph with typed state
     workflow = StateGraph(SpecPilotState)
 
-    # Define wrapper functions to pass API key if provided
+    # Define wrapper functions to pass API key and handle model fallback
     def planner_node(state: SpecPilotState):
-        return run_planner_agent(state, api_key=api_key)
+        return _with_fallback(run_planner_agent, state, api_key)
 
     def requirement_node(state: SpecPilotState):
-        return run_requirement_agent(state, api_key=api_key)
+        return _with_fallback(run_requirement_agent, state, api_key)
 
     def ambiguity_node(state: SpecPilotState):
-        return run_ambiguity_agent(state, api_key=api_key)
+        return _with_fallback(run_ambiguity_agent, state, api_key)
 
     def task_node(state: SpecPilotState):
-        return run_task_agent(state, api_key=api_key)
+        return _with_fallback(run_task_agent, state, api_key)
 
     def dependency_node(state: SpecPilotState):
-        return run_dependency_agent(state, api_key=api_key)
+        return _with_fallback(run_dependency_agent, state, api_key)
 
     def risk_node(state: SpecPilotState):
-        return run_risk_agent(state, api_key=api_key)
+        return _with_fallback(run_risk_agent, state, api_key)
 
     def acceptance_node(state: SpecPilotState):
-        return run_acceptance_agent(state, api_key=api_key)
+        return _with_fallback(run_acceptance_agent, state, api_key)
 
     def spec_generator_node(state: SpecPilotState):
-        return run_spec_generator_agent(state, api_key=api_key)
+        return _with_fallback(run_spec_generator_agent, state, api_key)
 
     # Add Nodes
     workflow.add_node("planner", planner_node)
