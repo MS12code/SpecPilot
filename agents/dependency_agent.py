@@ -18,7 +18,7 @@ def run_dependency_agent(state: SpecPilotState, api_key: str = None) -> Dict[str
     task_output = state.get("task_output", {})
     
     llm = get_groq_llm(api_key=api_key)
-    structured_llm = llm.with_structured_output(DependencyGraph)
+    structured_llm = llm.with_structured_output(DependencyGraph, method="json_mode")
     
     prompt = ChatPromptTemplate.from_template(DEPENDENCY_PROMPT)
     chain = prompt | structured_llm

@@ -17,7 +17,7 @@ def run_planner_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, A
     requirement_text = state.get("requirement_text", "")
     
     llm = get_groq_llm(api_key=api_key)
-    structured_llm = llm.with_structured_output(PlannerAnalysis)
+    structured_llm = llm.with_structured_output(PlannerAnalysis, method="json_mode")
     
     prompt = ChatPromptTemplate.from_template(PLANNER_PROMPT)
     chain = prompt | structured_llm

@@ -19,7 +19,7 @@ def run_task_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]
     ambiguity_output = state.get("ambiguity_output", {})
     
     llm = get_groq_llm(api_key=api_key)
-    structured_llm = llm.with_structured_output(TaskBreakdown)
+    structured_llm = llm.with_structured_output(TaskBreakdown, method="json_mode")
     
     prompt = ChatPromptTemplate.from_template(TASK_PROMPT)
     chain = prompt | structured_llm

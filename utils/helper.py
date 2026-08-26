@@ -16,9 +16,9 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # 1. Groq LLM Provider
 # ---------------------------------------------------------------------------
-def get_groq_llm(api_key: Optional[str] = None, model_name: str = "llama-3.3-70b-versatile", temperature: float = 0.2) -> ChatGroq:
+def get_groq_llm(api_key: Optional[str] = None, model_name: Optional[str] = None, temperature: float = 0.2, max_tokens: int = 4096, max_retries: int = 5) -> ChatGroq:
     """
-    Initialize and return a ChatGroq LLM instance.
+    Initialize and return a ChatGroq LLM instance with rate-limit retries.
     Checks provided api_key, environment variable, or raises informative ValueError.
     """
     key = api_key or os.getenv("GROQ_API_KEY")
@@ -27,10 +27,25 @@ def get_groq_llm(api_key: Optional[str] = None, model_name: str = "llama-3.3-70b
             "GROQ_API_KEY not found! Please set it in your .env file or enter it in the Streamlit sidebar."
         )
 
+    # Use specified model, environment variable, or fall back to active high-performing model
+    selected_model = model_name or os.getenv("GROQ_MODEL_NAME")
+    DEPRECATED_MODELS = {
+        "llama-3.3-70b-versatile",
+        "llama-3.3-70b-specdec",
+        "llama-3.1-70b-versatile",
+        "llama3-70b-8192",
+        "llama3-8b-8192",
+        "mixtral-8x7b-32768"
+    }
+    if not selected_model or selected_model in DEPRECATED_MODELS or any(dep in str(selected_model).lower() for dep in ["llama-3.3", "llama-3.1", "llama3-", "mixtral"]):
+        selected_model = "qwen/qwen3.6-27b"
+
     return ChatGroq(
         groq_api_key=key,
-        model_name=model_name,
-        temperature=temperature
+        model_name=selected_model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        max_retries=max_retries
     )
 
 

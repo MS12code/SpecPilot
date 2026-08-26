@@ -23,7 +23,7 @@ def run_spec_generator_agent(state: SpecPilotState, api_key: str = None) -> Dict
     acc_output = state.get("acceptance_output", {})
     
     llm = get_groq_llm(api_key=api_key)
-    structured_llm = llm.with_structured_output(TechnicalSpec)
+    structured_llm = llm.with_structured_output(TechnicalSpec, method="json_mode")
     
     prompt = ChatPromptTemplate.from_template(SPEC_GENERATOR_PROMPT)
     chain = prompt | structured_llm

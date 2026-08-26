@@ -35,7 +35,7 @@ Software engineers and technical architects spend hours manually breaking down v
 
 - **🌐 Autonomous Multi-Agent Pipeline**: Powered by LangGraph `StateGraph` for structured, sequential reasoning across 8 autonomous agent nodes.
 - **🛡️ Strict Pydantic Data Validation**: Guarantees deterministic, type-safe JSON schema outputs for every analysis stage.
-- **⚡ High-Speed Inference via Groq**: Utilizes `llama-3.3-70b-versatile` for deep technical reasoning with sub-second response times.
+- **⚡ High-Speed Inference via Groq**: Utilizes active high-performing models (such as `qwen/qwen3.6-27b`) for deep technical reasoning with sub-second response times.
 - **🛠️ Categorized Engineering Task Breakdown**: Splits work into Frontend, Backend, Conceptual DB schema, Testing, and Documentation tasks with priority ratings.
 - **🔍 Ambiguity & Gap Detection**: Uncovers unstated technical assumptions and formulates exact clarifying questions developers must ask product owners.
 - **⚠️ Risk & Edge Case Assessment**: Identifies security vulnerabilities, performance bottlenecks, and edge cases alongside practical mitigations.
@@ -160,7 +160,7 @@ Open your browser at `http://localhost:8501`.
 | **Language** | Python 3.10+ |
 | **Agent Orchestration** | LangGraph (`StateGraph`) |
 | **LLM Framework** | LangChain (`langchain-groq`) |
-| **LLM Engine** | Groq (`llama-3.3-70b-versatile`) |
+| **LLM Engine** | Groq (`qwen/qwen3.6-27b` / configurable) |
 | **Data Validation** | Pydantic v2 |
 | **User Interface** | Streamlit |
 | **Export Utility** | FPDF2 |

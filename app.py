@@ -177,7 +177,7 @@ st.markdown("""
     <div class="main-subtitle">Agentic Software Requirement Analysis Assistant</div>
     <div class="badge-container">
         <span class="tech-badge">LangGraph Orchestrated</span>
-        <span class="tech-badge">Groq Llama 3.3 70B</span>
+        <span class="tech-badge">Groq LLM Engine</span>
         <span class="tech-badge">Pydantic Schema Enforced</span>
         <span class="tech-badge">Local Execution</span>
     </div>

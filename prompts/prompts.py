@@ -5,7 +5,7 @@ Contains tailored system instructions for each agent to analyze software require
 
 SYSTEM_BASE_INSTRUCTION = """You are SpecPilot, an expert AI Software Architect and Principal Technical Analyst.
 Your role is to conduct rigorous, structured analysis of software requirements pasted by product managers or engineers.
-Always respond strictly according to the requested Pydantic schema structure. Maintain professional software engineering tone, clarity, and precision.
+Always respond strictly according to the requested Pydantic schema structure in valid JSON format. Maintain professional software engineering tone, clarity, and precision.
 """
 
 # ---------------------------------------------------------------------------
@@ -20,10 +20,11 @@ User Requirement:
 \"\"\"{requirement_text}\"\"\"
 
 Instructions:
-1. Provide a high-level assessment of the requirement.
-2. Estimate scope complexity (Low, Medium, High, or Enterprise).
-3. List 3-5 key technical focus areas for downstream analysis.
-4. List the steps that will be executed by specialized analysis agents.
+Respond strictly in JSON format with these exact field keys:
+- "initial_assessment": (string) High-level assessment of the requirement.
+- "scope_complexity": (string) Scope complexity rating ("Low", "Medium", "High", or "Enterprise").
+- "key_focus_areas": (list of strings) 3-5 key technical focus areas for downstream analysis.
+- "planned_steps": (list of strings) Sequential workflow steps that will be executed by downstream agents.
 """
 
 # ---------------------------------------------------------------------------
@@ -41,11 +42,12 @@ Planner Assessment Context:
 {planner_context}
 
 Instructions:
-1. Write a clear summary of the requirement.
-2. Extract all explicit and implicit Functional Requirements.
-3. Identify Non-functional Requirements (performance, security, usability, availability, scalability).
-4. Identify all User Roles / Actors (e.g. End User, Admin, System Background Process).
-5. Extract the Main Features.
+Respond strictly in JSON format with these exact field keys:
+- "summary": (string) A clear, concise summary of the requirement.
+- "functional_requirements": (list of strings) All explicit and implicit functional requirements.
+- "non_functional_requirements": (list of strings) Non-functional requirements (performance, security, usability, etc.).
+- "actors": (list of strings) All user roles or actors (e.g. End User, Admin, System).
+- "main_features": (list of strings) Main features extracted from the requirement.
 """
 
 # ---------------------------------------------------------------------------
@@ -63,10 +65,11 @@ Requirement Breakdown Context:
 {requirement_context}
 
 Instructions:
-1. Identify missing details (e.g., notification channels, delivery retry logic, authentication method, payload formats).
-2. Highlight vague or ambiguous phrases in the input requirement.
-3. Draft critical clarifying questions developers should ask product owners.
-4. Document sensible default assumptions to enable initial design.
+Respond strictly in JSON format with these exact field keys:
+- "missing_details": (list of strings) Crucial technical or business details missing from input.
+- "ambiguous_statements": (list of strings) Vague or ambiguous phrases.
+- "developer_questions": (list of strings) Critical clarifying questions for product owners.
+- "assumptions_made": (list of strings) Sensible default assumptions made for design.
 """
 
 # ---------------------------------------------------------------------------
@@ -87,13 +90,13 @@ Ambiguity Context:
 {ambiguity_context}
 
 Instructions:
-1. Break down implementation work into specific engineering tasks for:
-   - Frontend (UI components, state management, validation, routing)
-   - Backend (APIs, controllers, authentication, worker jobs)
-   - Database (conceptual entities, tables, relationships - DO NOT implement, just suggest)
-   - Testing (Unit, Integration, Edge Case tests)
-   - Documentation (API docs, setup guides, schema diagrams)
-2. Assign each task a short title, detailed description, and priority (High, Medium, Low).
+Respond strictly in JSON format with these exact field keys:
+- "frontend_tasks": (list of objects with "title", "description", "priority") UI components, state management, validation.
+- "backend_tasks": (list of objects with "title", "description", "priority") APIs, controllers, worker jobs.
+- "database_suggestions": (list of objects with "title", "description", "priority") Data modeling suggestions.
+- "testing_tasks": (list of objects with "title", "description", "priority") Unit, integration, edge case tests.
+- "documentation_tasks": (list of objects with "title", "description", "priority") API docs and setup guides.
+Each task object MUST contain "title" (string), "description" (string), and "priority" ("High", "Medium", or "Low").
 """
 
 # ---------------------------------------------------------------------------
@@ -111,9 +114,10 @@ Engineering Task Breakdown Context:
 {task_context}
 
 Instructions:
-1. Identify module and service dependencies (e.g. Email Service -> Token Generator -> User Store).
-2. Define the optimal build sequence (what needs to be built first, second, third).
-3. Identify critical path components that pose potential build bottlenecks.
+Respond strictly in JSON format with these exact field keys:
+- "dependencies": (list of objects with "component", "depends_on", "explanation") Module and service dependencies.
+- "execution_order": (list of strings) Recommended build sequence steps.
+- "critical_path": (list of strings) Bottleneck components on critical path.
 """
 
 # ---------------------------------------------------------------------------
@@ -131,11 +135,10 @@ Task & Dependency Context:
 {task_context}
 
 Instructions:
-1. Highlight Security Risks (e.g., rate limiting, token expiration, injection, encryption).
-2. Highlight Performance & Scalability Risks.
-3. List critical edge cases (e.g., network timeout, duplicate requests, stale tokens).
-4. Provide practical engineering mitigation strategies for each risk.
-5. Provide an overall risk score (Low, Moderate, High, or Severe).
+Respond strictly in JSON format with these exact field keys:
+- "risks": (list of objects with "category", "description", "impact", "mitigation") Technical and operational risks.
+- "edge_cases": (list of strings) Corner/edge cases to handle.
+- "overall_risk_level": (string) Overall risk rating ("Low", "Moderate", "High", or "Severe").
 """
 
 # ---------------------------------------------------------------------------
@@ -153,8 +156,9 @@ Requirements & Risk Context:
 {risk_context}
 
 Instructions:
-1. Draft Given-When-Then scenarios covering happy paths, error paths, and edge cases.
-2. Include general verification rules for Quality Assurance engineers.
+Respond strictly in JSON format with these exact field keys:
+- "criteria": (list of objects with "feature", "given", "when", "then") Given-When-Then scenarios.
+- "general_rules": (list of strings) General QA pass/fail rules.
 """
 
 # ---------------------------------------------------------------------------
@@ -177,10 +181,12 @@ All Analysis Outputs:
 - Acceptance Criteria: {acceptance_context}
 
 Instructions:
-1. Synthesize an Executive Summary and System Architecture Overview.
-2. Design REST API Endpoints (Method, Endpoint Path, Purpose).
-3. Design Conceptual Database Tables & Fields.
-4. Rate Overall Technical Complexity (Low, Medium, High, Very High).
-5. Outline Key Development Recommendations before starting execution.
-6. Generate a full, beautifully formatted Markdown report containing all sections cleanly structured with headers, tables, bullet points, and code blocks.
+Respond strictly in JSON format with these exact field keys:
+- "executive_summary": (string) Executive summary of the technical spec.
+- "system_architecture_overview": (string) System architecture design overview.
+- "suggested_apis": (list of objects with "method", "endpoint", "purpose") REST API endpoints.
+- "suggested_db_tables": (list of objects with "table_name", "fields", "purpose") Conceptual DB schemas.
+- "overall_complexity": (string) Overall complexity rating ("Low", "Medium", "High", or "Very High").
+- "development_recommendations": (list of strings) Key recommendations for developers.
+- "full_report_markdown": (string) Complete, formatted Markdown report.
 """

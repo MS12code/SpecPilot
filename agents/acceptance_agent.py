@@ -18,7 +18,7 @@ def run_acceptance_agent(state: SpecPilotState, api_key: str = None) -> Dict[str
     risk_output = state.get("risk_output", {})
     
     llm = get_groq_llm(api_key=api_key)
-    structured_llm = llm.with_structured_output(AcceptanceCriteriaList)
+    structured_llm = llm.with_structured_output(AcceptanceCriteriaList, method="json_mode")
     
     prompt = ChatPromptTemplate.from_template(ACCEPTANCE_PROMPT)
     chain = prompt | structured_llm

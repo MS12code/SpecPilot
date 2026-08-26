@@ -18,7 +18,7 @@ def run_ambiguity_agent(state: SpecPilotState, api_key: str = None) -> Dict[str,
     req_output = state.get("requirement_output", {})
     
     llm = get_groq_llm(api_key=api_key)
-    structured_llm = llm.with_structured_output(AmbiguityReport)
+    structured_llm = llm.with_structured_output(AmbiguityReport, method="json_mode")
     
     prompt = ChatPromptTemplate.from_template(AMBIGUITY_PROMPT)
     chain = prompt | structured_llm

@@ -18,7 +18,7 @@ def run_risk_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]
     task_output = state.get("task_output", {})
     
     llm = get_groq_llm(api_key=api_key)
-    structured_llm = llm.with_structured_output(RiskAssessment)
+    structured_llm = llm.with_structured_output(RiskAssessment, method="json_mode")
     
     prompt = ChatPromptTemplate.from_template(RISK_PROMPT)
     chain = prompt | structured_llm
