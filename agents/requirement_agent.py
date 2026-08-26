@@ -7,7 +7,7 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from schemas.state import SpecPilotState, RequirementSummary
 from prompts.prompts import SYSTEM_BASE_INSTRUCTION, REQUIREMENT_PROMPT
-from utils.helper import get_groq_llm
+from utils.helper import get_groq_llm, safe_chain_invoke
 
 
 def run_requirement_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]:
@@ -23,7 +23,7 @@ def run_requirement_agent(state: SpecPilotState, api_key: str = None) -> Dict[st
     prompt = ChatPromptTemplate.from_template(REQUIREMENT_PROMPT)
     chain = prompt | structured_llm
     
-    result: RequirementSummary = chain.invoke({
+    result: RequirementSummary = safe_chain_invoke(chain, {
         "system_base": SYSTEM_BASE_INSTRUCTION,
         "requirement_text": requirement_text,
         "planner_context": str(planner_output)

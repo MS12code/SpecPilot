@@ -3,6 +3,7 @@ LangGraph Workflow Orchestration for SpecPilot Multi-Agent System.
 Defines the StateGraph execution pipeline across all 8 specialized AI agents.
 """
 
+import time
 from typing import Dict, Any, Optional, Callable
 from langgraph.graph import StateGraph, START, END
 from schemas.state import SpecPilotState
@@ -109,5 +110,6 @@ def execute_analysis_workflow(
             if progress_callback and node_name in step_weights:
                 pct, msg = step_weights[node_name]
                 progress_callback(msg, pct)
+            time.sleep(0.8)
 
     return final_state

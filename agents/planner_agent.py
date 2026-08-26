@@ -7,7 +7,7 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from schemas.state import SpecPilotState, PlannerAnalysis
 from prompts.prompts import SYSTEM_BASE_INSTRUCTION, PLANNER_PROMPT
-from utils.helper import get_groq_llm
+from utils.helper import get_groq_llm, safe_chain_invoke
 
 
 def run_planner_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]:
@@ -22,7 +22,7 @@ def run_planner_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, A
     prompt = ChatPromptTemplate.from_template(PLANNER_PROMPT)
     chain = prompt | structured_llm
     
-    result: PlannerAnalysis = chain.invoke({
+    result: PlannerAnalysis = safe_chain_invoke(chain, {
         "system_base": SYSTEM_BASE_INSTRUCTION,
         "requirement_text": requirement_text
     })

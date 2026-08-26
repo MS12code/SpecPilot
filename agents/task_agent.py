@@ -7,7 +7,7 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from schemas.state import SpecPilotState, TaskBreakdown
 from prompts.prompts import SYSTEM_BASE_INSTRUCTION, TASK_PROMPT
-from utils.helper import get_groq_llm
+from utils.helper import get_groq_llm, safe_chain_invoke
 
 
 def run_task_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]:
@@ -24,7 +24,7 @@ def run_task_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]
     prompt = ChatPromptTemplate.from_template(TASK_PROMPT)
     chain = prompt | structured_llm
     
-    result: TaskBreakdown = chain.invoke({
+    result: TaskBreakdown = safe_chain_invoke(chain, {
         "system_base": SYSTEM_BASE_INSTRUCTION,
         "requirement_text": requirement_text,
         "requirement_context": str(req_output),

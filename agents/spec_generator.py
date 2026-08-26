@@ -7,7 +7,7 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from schemas.state import SpecPilotState, TechnicalSpec
 from prompts.prompts import SYSTEM_BASE_INSTRUCTION, SPEC_GENERATOR_PROMPT
-from utils.helper import get_groq_llm
+from utils.helper import get_groq_llm, safe_chain_invoke
 
 
 def run_spec_generator_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]:
@@ -28,15 +28,16 @@ def run_spec_generator_agent(state: SpecPilotState, api_key: str = None) -> Dict
     prompt = ChatPromptTemplate.from_template(SPEC_GENERATOR_PROMPT)
     chain = prompt | structured_llm
     
-    result: TechnicalSpec = chain.invoke({
+    # Compact context payloads to reduce prompt token footprint
+    result: TechnicalSpec = safe_chain_invoke(chain, {
         "system_base": SYSTEM_BASE_INSTRUCTION,
         "requirement_text": requirement_text,
-        "requirement_context": str(req_output),
-        "ambiguity_context": str(ambiguity_output),
-        "task_context": str(task_output),
-        "dependency_context": str(dep_output),
-        "risk_context": str(risk_output),
-        "acceptance_context": str(acc_output)
+        "requirement_context": str(req_output)[:1200],
+        "ambiguity_context": str(ambiguity_output)[:1200],
+        "task_context": str(task_output)[:1500],
+        "dependency_context": str(dep_output)[:1200],
+        "risk_context": str(risk_output)[:1200],
+        "acceptance_context": str(acc_output)[:1200]
     })
     
     spec_dict = result.model_dump()

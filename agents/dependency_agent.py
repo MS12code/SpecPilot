@@ -7,7 +7,7 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from schemas.state import SpecPilotState, DependencyGraph
 from prompts.prompts import SYSTEM_BASE_INSTRUCTION, DEPENDENCY_PROMPT
-from utils.helper import get_groq_llm
+from utils.helper import get_groq_llm, safe_chain_invoke
 
 
 def run_dependency_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]:
@@ -23,7 +23,7 @@ def run_dependency_agent(state: SpecPilotState, api_key: str = None) -> Dict[str
     prompt = ChatPromptTemplate.from_template(DEPENDENCY_PROMPT)
     chain = prompt | structured_llm
     
-    result: DependencyGraph = chain.invoke({
+    result: DependencyGraph = safe_chain_invoke(chain, {
         "system_base": SYSTEM_BASE_INSTRUCTION,
         "requirement_text": requirement_text,
         "task_context": str(task_output)

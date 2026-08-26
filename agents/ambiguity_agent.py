@@ -7,7 +7,7 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from schemas.state import SpecPilotState, AmbiguityReport
 from prompts.prompts import SYSTEM_BASE_INSTRUCTION, AMBIGUITY_PROMPT
-from utils.helper import get_groq_llm
+from utils.helper import get_groq_llm, safe_chain_invoke
 
 
 def run_ambiguity_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]:
@@ -23,7 +23,7 @@ def run_ambiguity_agent(state: SpecPilotState, api_key: str = None) -> Dict[str,
     prompt = ChatPromptTemplate.from_template(AMBIGUITY_PROMPT)
     chain = prompt | structured_llm
     
-    result: AmbiguityReport = chain.invoke({
+    result: AmbiguityReport = safe_chain_invoke(chain, {
         "system_base": SYSTEM_BASE_INSTRUCTION,
         "requirement_text": requirement_text,
         "requirement_context": str(req_output)

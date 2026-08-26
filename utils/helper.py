@@ -13,6 +13,28 @@ from fpdf import FPDF
 load_dotenv()
 
 
+import time
+
+def safe_chain_invoke(chain, input_data: dict, max_retries: int = 4, base_delay: float = 5.0) -> Any:
+    """
+    Safely invokes a LangChain runnable chain with automatic exponential backoff retries 
+    on Groq TPM / RateLimit exceptions (e.g. HTTP 413, 429, or tokens per minute errors).
+    """
+    for attempt in range(max_retries):
+        try:
+            return chain.invoke(input_data)
+        except Exception as e:
+            err_str = str(e).lower()
+            is_rate_limit = any(keyword in err_str for keyword in [
+                "rate limit", "rate_limit", "tpm", "429", "413", "tokens per minute", "request too large"
+            ])
+            if is_rate_limit and attempt < max_retries - 1:
+                sleep_time = base_delay * (attempt + 1)
+                time.sleep(sleep_time)
+            else:
+                raise e
+
+
 # ---------------------------------------------------------------------------
 # 1. Groq LLM Provider
 # ---------------------------------------------------------------------------

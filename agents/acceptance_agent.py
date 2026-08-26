@@ -7,7 +7,7 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from schemas.state import SpecPilotState, AcceptanceCriteriaList
 from prompts.prompts import SYSTEM_BASE_INSTRUCTION, ACCEPTANCE_PROMPT
-from utils.helper import get_groq_llm
+from utils.helper import get_groq_llm, safe_chain_invoke
 
 
 def run_acceptance_agent(state: SpecPilotState, api_key: str = None) -> Dict[str, Any]:
@@ -23,7 +23,7 @@ def run_acceptance_agent(state: SpecPilotState, api_key: str = None) -> Dict[str
     prompt = ChatPromptTemplate.from_template(ACCEPTANCE_PROMPT)
     chain = prompt | structured_llm
     
-    result: AcceptanceCriteriaList = chain.invoke({
+    result: AcceptanceCriteriaList = safe_chain_invoke(chain, {
         "system_base": SYSTEM_BASE_INSTRUCTION,
         "requirement_text": requirement_text,
         "risk_context": str(risk_output)
