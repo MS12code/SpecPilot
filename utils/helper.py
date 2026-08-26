@@ -4,7 +4,8 @@ Includes Groq LLM initialization, PDF report generator, and preset sample requir
 """
 
 import os
-from typing import Optional, Dict, Any
+import time
+from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from fpdf import FPDF
@@ -12,25 +13,91 @@ from fpdf import FPDF
 # Load environment variables
 load_dotenv()
 
+# ---------------------------------------------------------------------------
+# 0. Groq Model Fallback Registry
+#    Models are tried in order when a daily/minute quota is exhausted.
+# ---------------------------------------------------------------------------
+DEPRECATED_MODELS = {
+    "llama-3.3-70b-versatile",
+    "llama-3.3-70b-specdec",
+    "llama-3.1-70b-versatile",
+    "llama3-70b-8192",
+    "llama3-8b-8192",
+    "mixtral-8x7b-32768",
+}
 
-import time
+# Ordered list of active Groq models to try — primary first, then progressively lighter fallbacks
+GROQ_FALLBACK_MODELS: List[str] = [
+    "qwen/qwen3.6-27b",
+    "llama-3.1-8b-instant",
+    "gemma2-9b-it",
+    "llama3-groq-8b-8192-tool-use-preview",
+]
 
-def safe_chain_invoke(chain, input_data: dict, max_retries: int = 4, base_delay: float = 3.0) -> Any:
+def safe_chain_invoke(
+    chain,
+    input_data: dict,
+    max_retries: int = 4,
+    base_delay: float = 3.0,
+    api_key: Optional[str] = None,
+    temperature: float = 0.2,
+    max_tokens: int = 4096,
+) -> Any:
     """
-    Safely invokes a LangChain runnable chain with automatic retries on Groq TPM / RateLimit (413, 429) 
-    and transient JSON validation errors (400 json_validate_failed).
+    Safely invokes a LangChain runnable chain with automatic retries on Groq rate limits:
+      - TPM (tokens per minute) → 413 / 429 with 'tokens per minute': exponential backoff retry.
+      - TPD (tokens per day)    → 429 with 'tokens per day': switches to the next fallback model.
+      - Transient JSON / generation errors (400 json_validate_failed): retry with backoff.
     """
+    from langchain_core.output_parsers import JsonOutputParser  # noqa: F401
+
+    _fallback_index = 0  # which model in GROQ_FALLBACK_MODELS we're currently using
+
     for attempt in range(max_retries):
         try:
             return chain.invoke(input_data)
         except Exception as e:
             err_str = str(e).lower()
+
+            # Daily quota exhausted → switch to next fallback model immediately
+            is_daily_limit = "tokens per day" in err_str or ("429" in err_str and "per day" in err_str)
+            if is_daily_limit:
+                _fallback_index += 1
+                if _fallback_index < len(GROQ_FALLBACK_MODELS):
+                    next_model = GROQ_FALLBACK_MODELS[_fallback_index]
+                    print(f"[SpecPilot] Daily token quota exhausted. Switching to fallback model: {next_model}")
+                    # Rebuild the chain's LLM binding with the new model
+                    try:
+                        new_llm = get_groq_llm(
+                            api_key=api_key,
+                            model_name=next_model,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                        )
+                        # Replace the LLM in the chain's first step if it's a pipeline
+                        if hasattr(chain, 'first'):
+                            chain = new_llm | chain.last
+                        else:
+                            chain = new_llm | chain
+                    except Exception:
+                        pass  # keep original chain, retry will re-raise
+                    time.sleep(2.0)
+                    continue  # retry with new model
+                else:
+                    raise RuntimeError(
+                        "All Groq model daily quotas exhausted. "
+                        "Please wait until quota resets or upgrade your Groq plan at "
+                        "https://console.groq.com/settings/billing"
+                    ) from e
+
+            # Minute-level rate limit or transient error → exponential backoff
             is_retryable = any(keyword in err_str for keyword in [
                 "rate limit", "rate_limit", "tpm", "429", "413", "tokens per minute",
                 "request too large", "json_validate_failed", "failed to validate json", "failed_generation"
             ])
             if is_retryable and attempt < max_retries - 1:
                 sleep_time = base_delay * (attempt + 1)
+                print(f"[SpecPilot] Rate limit hit (attempt {attempt+1}/{max_retries}). Retrying in {sleep_time}s...")
                 time.sleep(sleep_time)
             else:
                 raise e
@@ -39,10 +106,17 @@ def safe_chain_invoke(chain, input_data: dict, max_retries: int = 4, base_delay:
 # ---------------------------------------------------------------------------
 # 1. Groq LLM Provider
 # ---------------------------------------------------------------------------
-def get_groq_llm(api_key: Optional[str] = None, model_name: Optional[str] = None, temperature: float = 0.2, max_tokens: int = 4096, max_retries: int = 5) -> ChatGroq:
+def get_groq_llm(
+    api_key: Optional[str] = None,
+    model_name: Optional[str] = None,
+    temperature: float = 0.2,
+    max_tokens: int = 4096,
+    max_retries: int = 5,
+) -> ChatGroq:
     """
     Initialize and return a ChatGroq LLM instance with rate-limit retries.
     Checks provided api_key, environment variable, or raises informative ValueError.
+    Automatically sanitises deprecated model names to the first active fallback model.
     """
     key = api_key or os.getenv("GROQ_API_KEY")
     if not key:
@@ -50,25 +124,21 @@ def get_groq_llm(api_key: Optional[str] = None, model_name: Optional[str] = None
             "GROQ_API_KEY not found! Please set it in your .env file or enter it in the Streamlit sidebar."
         )
 
-    # Use specified model, environment variable, or fall back to active high-performing model
+    # Use specified model, environment variable, or fall back to first active model in fallback list
     selected_model = model_name or os.getenv("GROQ_MODEL_NAME")
-    DEPRECATED_MODELS = {
-        "llama-3.3-70b-versatile",
-        "llama-3.3-70b-specdec",
-        "llama-3.1-70b-versatile",
-        "llama3-70b-8192",
-        "llama3-8b-8192",
-        "mixtral-8x7b-32768"
-    }
-    if not selected_model or selected_model in DEPRECATED_MODELS or any(dep in str(selected_model).lower() for dep in ["llama-3.3", "llama-3.1", "llama3-", "mixtral"]):
-        selected_model = "qwen/qwen3.6-27b"
+    if (
+        not selected_model
+        or selected_model in DEPRECATED_MODELS
+        or any(dep in str(selected_model).lower() for dep in ["llama-3.3", "llama-3.1", "llama3-", "mixtral"])
+    ):
+        selected_model = GROQ_FALLBACK_MODELS[0]  # "qwen/qwen3.6-27b"
 
     return ChatGroq(
         groq_api_key=key,
         model_name=selected_model,
         temperature=temperature,
         max_tokens=max_tokens,
-        max_retries=max_retries
+        max_retries=max_retries,
     )
 
 
