@@ -21,19 +21,19 @@ DEPRECATED_MODELS = {
     "llama-3.3-70b-versatile",
     "llama-3.3-70b-specdec",
     "llama-3.1-70b-versatile",
+    "llama-3.1-8b-instant",
     "llama3-70b-8192",
     "llama3-8b-8192",
     "mixtral-8x7b-32768",
+    "gemma2-9b-it",
+    "llama3-groq-8b-8192-tool-use-preview",
 }
 
-# Ordered list of active Groq models to try.
-# llama-3.1-8b-instant is primary: 500k TPD (vs qwen's 200k TPD) — less likely to hit daily quota.
-# qwen/qwen3.6-27b is fallback #1: higher quality but lower daily limit.
+# Ordered list of VERIFIED available models on this Groq account (queried via API).
+# qwen3.6-27b is primary; qwen3.8-27b is fallback with its own separate daily quota.
 GROQ_FALLBACK_MODELS: List[str] = [
-    "llama-3.1-8b-instant",
     "qwen/qwen3.6-27b",
-    "gemma2-9b-it",
-    "llama-3.3-70b-specdec",
+    "qwen/qwen3.8-27b",
 ]
 
 # Module-level active model index — advanced when a model's daily TPD quota is exhausted.
@@ -137,11 +137,7 @@ def get_groq_llm(
     # Use specified model, environment variable, or the currently active fallback model.
     # _ACTIVE_MODEL_INDEX is advanced by advance_fallback_model() when daily TPD is exhausted.
     selected_model = model_name or os.getenv("GROQ_MODEL_NAME")
-    if (
-        not selected_model
-        or selected_model in DEPRECATED_MODELS
-        or any(dep in str(selected_model).lower() for dep in ["llama-3.3", "llama3-70b", "llama3-8b", "mixtral"])
-    ):
+    if not selected_model or selected_model in DEPRECATED_MODELS or "mixtral" in str(selected_model).lower():
         selected_model = GROQ_FALLBACK_MODELS[_ACTIVE_MODEL_INDEX]
 
     return ChatGroq(
