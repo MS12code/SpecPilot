@@ -26,12 +26,14 @@ DEPRECATED_MODELS = {
     "mixtral-8x7b-32768",
 }
 
-# Ordered list of active Groq models to try — primary first, then progressively lighter fallbacks
+# Ordered list of active Groq models to try.
+# llama-3.1-8b-instant is primary: 500k TPD (vs qwen's 200k TPD) — less likely to hit daily quota.
+# qwen/qwen3.6-27b is fallback #1: higher quality but lower daily limit.
 GROQ_FALLBACK_MODELS: List[str] = [
-    "qwen/qwen3.6-27b",
     "llama-3.1-8b-instant",
+    "qwen/qwen3.6-27b",
     "gemma2-9b-it",
-    "llama3-groq-8b-8192-tool-use-preview",
+    "llama-3.3-70b-specdec",
 ]
 
 # Module-level active model index — advanced when a model's daily TPD quota is exhausted.
@@ -138,7 +140,7 @@ def get_groq_llm(
     if (
         not selected_model
         or selected_model in DEPRECATED_MODELS
-        or any(dep in str(selected_model).lower() for dep in ["llama-3.3", "llama-3.1", "llama3-", "mixtral"])
+        or any(dep in str(selected_model).lower() for dep in ["llama-3.3", "llama3-70b", "llama3-8b", "mixtral"])
     ):
         selected_model = GROQ_FALLBACK_MODELS[_ACTIVE_MODEL_INDEX]
 
