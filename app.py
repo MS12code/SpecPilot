@@ -102,6 +102,24 @@ st.markdown("""
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
     }
+
+    /* Force all sample-button columns to stretch to the same height */
+    div[data-testid="column"] {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    div[data-testid="column"] .stButton {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    div[data-testid="column"] .stButton > button {
+        flex: 1 !important;
+        height: auto !important;
+        min-height: 80px !important;
+    }
     
     .metric-badge-high {
         background-color: #fee2e2;
